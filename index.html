@@ -99,7 +99,7 @@
 
     .scan-form {
       display: grid;
-      grid-template-columns: 1fr auto auto auto;
+      grid-template-columns: 1fr auto auto auto auto;
       gap: 10px;
     }
 
@@ -133,6 +133,11 @@
 
     .btn-export {
       background: #0f172a;
+      color: #fff;
+    }
+
+    .btn-import {
+      background: #1e3a8a;
       color: #fff;
     }
 
@@ -274,7 +279,9 @@
         >
         <button class="btn-add" type="submit">Add Scan</button>
         <button class="btn-export" id="exportBtn" type="button">Export CSV</button>
+        <button class="btn-import" id="importBtn" type="button">Import File</button>
         <button class="btn-reset" id="resetBtn" type="button">Reset</button>
+        <input id="importFileInput" type="file" accept=".csv,.txt" hidden>
       </form>
       <p class="muted">Tip: most RFID HID scanners send <strong>Enter</strong> automatically after each card.</p>
     </section>
@@ -317,6 +324,8 @@
     const duplicatesList = document.getElementById('duplicatesList');
     const resetBtn = document.getElementById('resetBtn');
     const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importFileInput = document.getElementById('importFileInput');
 
     const totalScansEl = document.getElementById('totalScans');
     const uniqueIdsEl = document.getElementById('uniqueIds');
@@ -446,7 +455,7 @@
       scanInput.focus();
     }
 
-    function addScan(scanId) {
+    function addScan(scanId, options = {}) {
       const id = scanId.trim();
       if (!id) return;
 
@@ -493,17 +502,88 @@
       sessionRows.push({ recordId, id, scanTime, rowElement: tr });
       refreshIdVisualState(id);
 
+      const suppressSignals = Boolean(options.suppressSignals);
+      const suppressStatus = Boolean(options.suppressStatus);
+
       if (isDuplicate) {
-        setStatus('duplicate', `Duplicate found: ${id} (seen ${entry.count} times)`);
-        duplicateBeep();
+        if (!suppressStatus) {
+          setStatus('duplicate', `Duplicate found: ${id} (seen ${entry.count} times)`);
+        }
+        if (!suppressSignals) {
+          duplicateBeep();
+        }
       } else {
-        setStatus('ok', `Scanned: ${id} (unique)`);
+        if (!suppressStatus) {
+          setStatus('ok', `Scanned: ${id} (unique)`);
+        }
       }
 
       renumberVisibleRows();
       updateStats();
       scanInput.value = '';
       scanInput.focus();
+    }
+
+    function splitCsvRow(row) {
+      return row
+        .split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/)
+        .map((cell) => cell.trim().replace(/^\"|\"$/g, '').replace(/\"\"/g, '\"'));
+    }
+
+    function parseImportIds(fileText) {
+      const lines = fileText
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      if (!lines.length) return [];
+
+      const csvLike = lines.some((line) => line.includes(','));
+      let startIndex = 0;
+      if (lines[0].toLowerCase().includes('rfid')) {
+        startIndex = 1;
+      }
+
+      const ids = [];
+      for (let i = startIndex; i < lines.length; i += 1) {
+        const cols = csvLike ? splitCsvRow(lines[i]) : [lines[i]];
+        if (!cols.length) continue;
+
+        let candidate = cols.length >= 2 ? cols[1] : cols[0];
+        candidate = candidate.trim();
+        if (!candidate || candidate.toLowerCase() === 'rfid id') continue;
+
+        ids.push(candidate);
+      }
+
+      return ids;
+    }
+
+    async function importRecordsFromFile() {
+      const file = importFileInput.files && importFileInput.files[0];
+      if (!file) return;
+
+      try {
+        const fileText = await file.text();
+        const ids = parseImportIds(fileText);
+        if (!ids.length) {
+          setStatus('ready', `No valid RFID IDs found in ${file.name}.`);
+          return;
+        }
+
+        let importedCount = 0;
+        ids.forEach((id) => {
+          addScan(id, { suppressSignals: true, suppressStatus: true });
+          importedCount += 1;
+        });
+
+        setStatus('ok', `Imported ${importedCount} IDs from ${file.name}.`);
+      } catch (_) {
+        setStatus('duplicate', 'Import failed. Check the file format and try again.');
+      } finally {
+        importFileInput.value = '';
+        scanInput.focus();
+      }
     }
 
     function updateStats() {
@@ -609,6 +689,10 @@
     });
 
     exportBtn.addEventListener('click', exportCsv);
+    importBtn.addEventListener('click', () => {
+      importFileInput.click();
+    });
+    importFileInput.addEventListener('change', importRecordsFromFile);
     resetBtn.addEventListener('click', resetSession);
     recordsBody.addEventListener('click', (event) => {
       const deleteButton = event.target.closest('.delete-btn');
