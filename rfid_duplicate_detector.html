@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RFID Duplicate Identifier</title>
+  <style>
+    :root {
+      --bg: #f4f7f9;
+      --card: #ffffff;
+      --ink: #1f2a37;
+      --muted: #64748b;
+      --line: #dbe4ea;
+      --ok-bg: #dcfce7;
+      --ok-ink: #166534;
+      --dup-bg: #fee2e2;
+      --dup-ink: #991b1b;
+      --warn-bg: #ffedd5;
+      --warn-ink: #9a3412;
+      --brand: #0f766e;
+      --brand-soft: #ccfbf1;
+      --brand-glow: rgba(15, 118, 110, 0.18);
+      --accent: #ea580c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Trebuchet MS", "Lucida Grande", "Verdana", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 90% 10%, #c8f7ef 0%, rgba(200, 247, 239, 0) 35%),
+        radial-gradient(circle at 10% 90%, #ffe7d1 0%, rgba(255, 231, 209, 0) 35%),
+        var(--bg);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.7rem;
+      letter-spacing: 0.2px;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    .subtitle .badge-3scan {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+      font-size: 0.78rem;
+      padding: 2px 7px;
+      border-radius: 6px;
+      border: 1px solid #bae6fd;
+      margin-left: 4px;
+    }
+
+    .status-banner {
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      transition: 150ms ease;
+    }
+
+    .status-ready {
+      background: var(--brand-soft);
+      color: var(--brand);
+      border-color: #99f6e4;
+    }
+
+    .status-ok {
+      background: var(--ok-bg);
+      color: var(--ok-ink);
+      border-color: #86efac;
+    }
+
+    .status-duplicate {
+      background: var(--dup-bg);
+      color: var(--dup-ink);
+      border-color: #fca5a5;
+      animation: flash 250ms linear 2;
+    }
+
+    @keyframes flash {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      50% { transform: translateX(2px); }
+      100% { transform: translateX(0); }
+    }
+
+    .scan-form {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto auto;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    /* RFID Input Container & Progress Overlay */
+    .scan-input-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      border-radius: 10px;
+      border: 2px solid #cbd5e1;
+      background: #ffffff;
+      overflow: hidden;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .scan-input-container:focus-within {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-glow);
+    }
+
+    .scan-input-container.mismatch-shake {
+      animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+      border-color: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
+    }
+
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-3px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+      40%, 60% { transform: translate3d(5px, 0, 0); }
+    }
+
+    .scan-progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(204, 251, 241, 0.75) 0%, rgba(153, 246, 228, 0.92) 100%);
+      border-right: 2px solid #0d9488;
+      transition: width 0.26s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, border-color 0.2s ease;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .scan-progress-bar.success {
+      background: linear-gradient(90deg, rgba(187, 247, 208, 0.85) 0%, rgba(134, 239, 172, 0.95) 100%);
+      border-right-color: #16a34a;
+    }
+
+    .scan-progress-bar.mismatch {
+      background: linear-gradient(90deg, rgba(254, 226, 226, 0.9) 0%, rgba(252, 165, 165, 0.95) 100%);
+      border-right-color: #dc2626;
+    }
+
+    .scan-input {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      font-size: 1.1rem;
+      padding: 12px 115px 12px 14px;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--ink);
+      font-family: inherit;
+    }
+
+    .scan-input::placeholder {
+      color: #94a3b8;
+      font-size: 0.98rem;
+    }
+
+    .scan-step-indicator {
+      position: absolute;
+      right: 8px;
+      z-index: 3;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .scan-step-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: var(--muted);
+      border: 1px solid #cbd5e1;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .scan-step-pill.step-1 {
+      background: #ccfbf1;
+      color: #0f766e;
+      border-color: #5eead4;
+    }
+
+    .scan-step-pill.step-2 {
+      background: #99f6e4;
+      color: #115e59;
+      border-color: #2dd4bf;
+      box-shadow: 0 0 8px rgba(20, 184, 166, 0.25);
+    }
+
+    .scan-step-pill.step-3 {
+      background: #86efac;
+      color: #14532d;
+      border-color: #4ade80;
+    }
+
+    .scan-step-pill.step-mismatch {
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #fca5a5;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      font-weight: 700;
+      white-space: nowrap;
+      transition: opacity 0.15s ease, transform 0.05s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .btn-add {
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .btn-export {
+      background: #0f172a;
+      color: #fff;
+    }
+
+    .btn-import {
+      background: #1e3a8a;
+      color: #fff;
+    }
+
+    .btn-reset {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-delete {
+      background: #7f1d1d;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      line-height: 1.1;
+    }
+
+    .stats-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(6, minmax(110px, 1fr));
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #f8fbfd;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.3rem;
+      font-weight: 800;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      background: #fff;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-size: 0.93rem;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f9fafb;
+      z-index: 1;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .status-pill.unique {
+      background: var(--ok-bg);
+      color: var(--ok-ink);
+      border-color: #86efac;
+    }
+
+    .status-pill.duplicate {
+      background: var(--dup-bg);
+      color: var(--dup-ink);
+      border-color: #fca5a5;
+    }
+
+    tr.duplicate-row {
+      background: #fff5f5;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+
+    .duplicates-list {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--warn-ink);
+    }
+
+    /* Toast Notification System */
+    .toast-container {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 420px;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 12px 16px;
+      box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 0.92rem;
+      line-height: 1.4;
+      border: 1px solid #e2e8f0;
+      border-left: 5px solid #64748b;
+      animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .toast.toast-error {
+      border-left-color: #dc2626;
+      background: #fffbfb;
+    }
+
+    .toast.toast-warning {
+      border-left-color: #ea580c;
+      background: #fffdfb;
+    }
+
+    .toast.toast-success {
+      border-left-color: #16a34a;
+      background: #fbfdfb;
+    }
+
+    .toast.toast-info {
+      border-left-color: #0284c7;
+      background: #f8fafc;
+    }
+
+    .toast-icon {
+      font-size: 1.25rem;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .toast-content {
+      flex: 1;
+      color: var(--ink);
+    }
+
+    .toast-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 2px;
+    }
+
+    .toast-message {
+      color: #475569;
+      font-size: 0.88rem;
+      word-break: break-word;
+    }
+
+    .toast-close {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 0 4px;
+      font-size: 1.2rem;
+      line-height: 1;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .toast-close:hover {
+      color: var(--ink);
+    }
+
+    .toast.toast-hide {
+      opacity: 0;
+      transform: translateX(30px) scale(0.95);
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateY(-12px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @media (max-width: 900px) {
+      body { padding: 12px; }
+      .scan-form {
+        grid-template-columns: 1fr;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(110px, 1fr));
+      }
+      .scan-form button { width: 100%; }
+      .toast-container {
+        left: 12px;
+        right: 12px;
+        top: 12px;
+        max-width: unset;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <div class="container">
+    <section class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h1>RFID Duplicate Identifier <span class="badge-3scan">3-Scan Verification</span></h1>
+        <p class="subtitle">Scan each RFID card <strong>3 times</strong> consecutively. When all 3 scans match, it is verified and added. If an ID appears again, it is flagged immediately as a duplicate.</p>
+      </div>
+      <div>
+        <a href="index.html" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #1e293b; text-decoration: none; font-weight: 700; font-size: 0.88rem;">
+          🏠 Tools Portal
+        </a>
+      </div>
+    </section>
+
+    <section class="card">
+      <div id="statusBanner" class="status-banner status-ready">Ready to scan. Scan card 3 times into the input field below.</div>
+      <form id="scanForm" class="scan-form" autocomplete="off">
+        <div class="scan-input-container" id="scanInputContainer">
+          <div class="scan-progress-bar" id="scanProgressBar"></div>
+          <input
+            id="scanInput"
+            class="scan-input"
+            type="text"
+            placeholder="Scan RFID card (Scan 1 of 3)"
+            autofocus
+            autocomplete="off"
+            spellcheck="false"
+            inputmode="text"
+          >
+          <div class="scan-step-indicator" id="scanStepIndicator">
+            <span class="scan-step-pill" id="scanStepPill">Scan 0/3</span>
+          </div>
+        </div>
+        <button class="btn-add" type="submit">Submit Scan</button>
+        <button class="btn-export" id="exportBtn" type="button">Export CSV</button>
+        <button class="btn-import" id="importBtn" type="button">Import File</button>
+        <button class="btn-reset" id="resetBtn" type="button">Reset</button>
+        <input id="importFileInput" type="file" accept=".csv,.txt" hidden>
+      </form>
+      <p class="muted">Tip: Most RFID scanners press <strong>Enter</strong> automatically. Press <strong>Esc</strong> to cancel pending scans.</p>
+    </section>
+
+    <section class="card">
+      <div class="stats-grid">
+        <div class="stat"><div class="stat-label">Total Scans</div><div id="totalScans" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">Unique IDs</div><div id="uniqueIds" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">Duplicate Scans</div><div id="duplicateScans" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">Duplicated IDs</div><div id="duplicatedIds" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">Duplicate Rate</div><div id="duplicateRate" class="stat-value">0%</div></div>
+        <div class="stat"><div class="stat-label">Most Repeated</div><div id="mostRepeated" class="stat-value">-</div></div>
+      </div>
+      <ul id="duplicatesList" class="duplicates-list"></ul>
+    </section>
+
+    <section class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>RFID ID</th>
+              <th>Scan Time</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const scanForm = document.getElementById('scanForm');
+    const scanInput = document.getElementById('scanInput');
+    const scanInputContainer = document.getElementById('scanInputContainer');
+    const scanProgressBar = document.getElementById('scanProgressBar');
+    const scanStepPill = document.getElementById('scanStepPill');
+    const statusBanner = document.getElementById('statusBanner');
+    const recordsBody = document.getElementById('recordsBody');
+    const duplicatesList = document.getElementById('duplicatesList');
+    const resetBtn = document.getElementById('resetBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importFileInput = document.getElementById('importFileInput');
+    const toastContainer = document.getElementById('toastContainer');
+
+    const totalScansEl = document.getElementById('totalScans');
+    const uniqueIdsEl = document.getElementById('uniqueIds');
+    const duplicateScansEl = document.getElementById('duplicateScans');
+    const duplicatedIdsEl = document.getElementById('duplicatedIds');
+    const duplicateRateEl = document.getElementById('duplicateRate');
+    const mostRepeatedEl = document.getElementById('mostRepeated');
+
+    // Verification state
+    const REQUIRED_SCANS = 3;
+    let pendingScans = [];
+    let scanResetTimer = null;
+
+    // RFID registry: id => { count: number, rows: HTMLTableRowElement[] }
+    const registry = new Map();
+    const sessionRows = [];
+    let nextRecordId = 1;
+    let audioCtx;
+
+    function getAudioContext() {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return null;
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function setStatus(type, text) {
+      statusBanner.className = `status-banner status-${type}`;
+      statusBanner.textContent = text;
+    }
+
+    function nowString() {
+      return new Date().toLocaleString();
+    }
+
+    /* Sound Effects */
+    function playStepBeep(step) {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const freq = step === 1 ? 587.33 : 783.99; // D5 for step 1, G5 for step 2
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.09);
+      } catch (_) {}
+    }
+
+    function playVerifySuccessBeep() {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      try {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = 'triangle';
+        osc1.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(880.00, ctx.currentTime); // A5
+
+        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.16);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(ctx.currentTime + 0.16);
+        osc2.stop(ctx.currentTime + 0.16);
+      } catch (_) {}
+    }
+
+    function playMismatchBeep() {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(260, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.22);
+
+        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.22);
+      } catch (_) {}
+
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 60, 100]);
+      }
+    }
+
+    function duplicateBeep() {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(680, ctx.currentTime);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+      } catch (_) {}
+
+      if (navigator.vibrate) {
+        navigator.vibrate([120, 60, 120]);
+      }
+    }
+
+    /* Toast Notification System */
+    function showToast(options) {
+      let title = '';
+      let message = '';
+      let type = 'info';
+      let duration = 4200;
+
+      if (typeof options === 'string') {
+        message = options;
+        type = arguments[1] || 'info';
+      } else if (typeof options === 'object') {
+        title = options.title || '';
+        message = options.message || '';
+        type = options.type || 'info';
+        duration = options.duration !== undefined ? options.duration : 4200;
+      }
+
+      const icons = {
+        error: '⚠️',
+        warning: '⚡',
+        success: '✅',
+        info: 'ℹ️'
+      };
+
+      const defaultTitles = {
+        error: 'Scan Mismatch',
+        warning: 'Warning',
+        success: 'Success',
+        info: 'Notice'
+      };
+
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+
+      const iconEl = document.createElement('div');
+      iconEl.className = 'toast-icon';
+      iconEl.textContent = icons[type] || 'ℹ️';
+
+      const contentEl = document.createElement('div');
+      contentEl.className = 'toast-content';
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'toast-title';
+      titleEl.textContent = title || defaultTitles[type] || 'Notification';
+
+      const msgEl = document.createElement('div');
+      msgEl.className = 'toast-message';
+      msgEl.textContent = message;
+
+      contentEl.appendChild(titleEl);
+      contentEl.appendChild(msgEl);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'toast-close';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.setAttribute('aria-label', 'Close');
+
+      let removed = false;
+      function removeToast() {
+        if (removed) return;
+        removed = true;
+        toast.classList.add('toast-hide');
+        setTimeout(() => {
+          toast.remove();
+        }, 260);
+      }
+
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeToast();
+      });
+
+      toast.appendChild(iconEl);
+      toast.appendChild(contentEl);
+      toast.appendChild(closeBtn);
+      toastContainer.appendChild(toast);
+
+      if (duration > 0) {
+        setTimeout(removeToast, duration);
+      }
+    }
+
+    /* Progress and Visual Step Updates */
+    function updateScanProgress(count, id = '', isSuccess = false, isMismatch = false) {
+      scanProgressBar.classList.remove('success', 'mismatch');
+      scanStepPill.className = 'scan-step-pill';
+
+      if (isMismatch) {
+        scanProgressBar.style.width = '100%';
+        scanProgressBar.classList.add('mismatch');
+        scanStepPill.classList.add('step-mismatch');
+        scanStepPill.textContent = 'Mismatch!';
+        scanInput.placeholder = 'Scan RFID card (Scan 1 of 3)';
+        return;
+      }
+
+      if (isSuccess) {
+        scanProgressBar.style.width = '100%';
+        scanProgressBar.classList.add('success');
+        scanStepPill.classList.add('step-3');
+        scanStepPill.textContent = '✓ Verified 3/3';
+        scanInput.placeholder = 'Verified! Ready for next card...';
+        return;
+      }
+
+      if (count === 0) {
+        scanProgressBar.style.width = '0%';
+        scanStepPill.textContent = 'Scan 0/3';
+        scanInput.placeholder = 'Scan RFID card (Scan 1 of 3)';
+      } else if (count === 1) {
+        scanProgressBar.style.width = '33.33%';
+        scanStepPill.classList.add('step-1');
+        scanStepPill.textContent = 'Scan 1/3 (Repeat)';
+        scanInput.placeholder = 'Scan SAME card again (Scan 2 of 3)...';
+      } else if (count === 2) {
+        scanProgressBar.style.width = '66.66%';
+        scanStepPill.classList.add('step-2');
+        scanStepPill.textContent = 'Scan 2/3 (1 more)';
+        scanInput.placeholder = 'Scan SAME card once more (Scan 3 of 3)...';
+      }
+    }
+
+    function triggerShake() {
+      scanInputContainer.classList.remove('mismatch-shake');
+      void scanInputContainer.offsetWidth; // force reflow
+      scanInputContainer.classList.add('mismatch-shake');
+      setTimeout(() => {
+        scanInputContainer.classList.remove('mismatch-shake');
+      }, 500);
+    }
+
+    function resetScanBufferDueToInactivity() {
+      if (pendingScans.length > 0) {
+        const id = pendingScans[0];
+        pendingScans = [];
+        updateScanProgress(0);
+        setStatus('ready', 'Scan verification timed out due to inactivity. Ready to scan.');
+        showToast({
+          title: 'Verification Timeout',
+          message: `Verification for "${id}" timed out. Please scan 3 times again.`,
+          type: 'info'
+        });
+      }
+    }
+
+    function handleScanMismatch(firstId, currentId, stepNumber) {
+      clearTimeout(scanResetTimer);
+      pendingScans = [];
+      playMismatchBeep();
+      triggerShake();
+      updateScanProgress(0, '', false, true);
+
+      showToast({
+        title: 'Scan Mismatch!',
+        message: `Scan #${stepNumber} ("${currentId}") did not match scan #1 ("${firstId}"). Please scan the same card 3 times.`,
+        type: 'error',
+        duration: 5000
+      });
+
+      setStatus('duplicate', `Mismatch on scan ${stepNumber}: "${firstId}" ≠ "${currentId}". Please scan card 3 times again.`);
+
+      setTimeout(() => {
+        updateScanProgress(0);
+      }, 1000);
+    }
+
+    function handleScanInput(rawScanId) {
+      const id = rawScanId.trim();
+      if (!id) return;
+
+      clearTimeout(scanResetTimer);
+
+      if (pendingScans.length === 0) {
+        // Step 1: First scan
+        pendingScans.push(id);
+        updateScanProgress(1, id);
+        setStatus('ready', `Scan 1/3 captured: "${id}". Please scan the SAME card again (2/3).`);
+        playStepBeep(1);
+        scanResetTimer = setTimeout(resetScanBufferDueToInactivity, 15000);
+      } else if (pendingScans.length === 1) {
+        // Step 2: Second scan
+        const firstId = pendingScans[0];
+        if (id === firstId) {
+          pendingScans.push(id);
+          updateScanProgress(2, id);
+          setStatus('ready', `Scan 2/3 verified: "${id}". Scan 1 more time to confirm (3/3).`);
+          playStepBeep(2);
+          scanResetTimer = setTimeout(resetScanBufferDueToInactivity, 15000);
+        } else {
+          handleScanMismatch(firstId, id, 2);
+        }
+      } else if (pendingScans.length === 2) {
+        // Step 3: Third scan
+        const firstId = pendingScans[0];
+        if (id === firstId) {
+          pendingScans = [];
+          updateScanProgress(3, id, true);
+          playVerifySuccessBeep();
+          addScan(id);
+
+          setTimeout(() => {
+            updateScanProgress(0);
+          }, 450);
+        } else {
+          handleScanMismatch(firstId, id, 3);
+        }
+      }
+
+      scanInput.value = '';
+      scanInput.focus();
+    }
+
+    function createStatusPill(kind, count) {
+      const pill = document.createElement('span');
+      pill.className = `status-pill ${kind}`;
+      if (kind === 'duplicate') {
+        pill.textContent = `Duplicate x${count}`;
+      } else {
+        pill.textContent = 'Unique';
+      }
+      return pill;
+    }
+
+    function markRowsAsDuplicate(rows, count) {
+      rows.forEach((row) => {
+        row.classList.add('duplicate-row');
+        const statusCell = row.querySelector('.status-cell');
+        statusCell.innerHTML = '';
+        statusCell.appendChild(createStatusPill('duplicate', count));
+      });
+    }
+
+    function markRowsAsUnique(rows) {
+      rows.forEach((row) => {
+        row.classList.remove('duplicate-row');
+        const statusCell = row.querySelector('.status-cell');
+        statusCell.innerHTML = '';
+        statusCell.appendChild(createStatusPill('unique', 1));
+      });
+    }
+
+    function refreshIdVisualState(id) {
+      const entry = registry.get(id);
+      if (!entry) return;
+
+      if (entry.count > 1) {
+        markRowsAsDuplicate(entry.rows, entry.count);
+      } else {
+        markRowsAsUnique(entry.rows);
+      }
+    }
+
+    function renumberVisibleRows() {
+      const rows = Array.from(recordsBody.querySelectorAll('tr'));
+      let scanNumber = rows.length;
+
+      rows.forEach((row) => {
+        const indexCell = row.querySelector('.index-cell');
+        if (indexCell) {
+          indexCell.textContent = String(scanNumber);
+        }
+        scanNumber -= 1;
+      });
+    }
+
+    function deleteScanRecord(recordId) {
+      const rowIndex = sessionRows.findIndex((row) => row.recordId === recordId);
+      if (rowIndex === -1) return;
+
+      const record = sessionRows[rowIndex];
+      sessionRows.splice(rowIndex, 1);
+
+      const entry = registry.get(record.id);
+      if (entry) {
+        entry.count = Math.max(0, entry.count - 1);
+        entry.rows = entry.rows.filter((row) => row !== record.rowElement);
+
+        if (entry.count === 0) {
+          registry.delete(record.id);
+        } else {
+          refreshIdVisualState(record.id);
+        }
+      }
+
+      record.rowElement.remove();
+      renumberVisibleRows();
+      updateStats();
+      setStatus('ready', `Deleted scan: ${record.id}`);
+      scanInput.focus();
+    }
+
+    function addScan(scanId, options = {}) {
+      const id = scanId.trim();
+      if (!id) return;
+
+      let entry = registry.get(id);
+      if (!entry) {
+        entry = { count: 0, rows: [] };
+        registry.set(id, entry);
+      }
+
+      entry.count += 1;
+      const isDuplicate = entry.count > 1;
+      const scanTime = nowString();
+      const recordId = nextRecordId++;
+
+      const tr = document.createElement('tr');
+      if (isDuplicate) tr.classList.add('duplicate-row');
+      tr.dataset.recordId = String(recordId);
+
+      const indexTd = document.createElement('td');
+      indexTd.className = 'index-cell';
+
+      const idTd = document.createElement('td');
+      idTd.textContent = id;
+
+      const timeTd = document.createElement('td');
+      timeTd.textContent = scanTime;
+
+      const statusTd = document.createElement('td');
+      statusTd.className = 'status-cell';
+      statusTd.appendChild(createStatusPill(isDuplicate ? 'duplicate' : 'unique', entry.count));
+
+      const actionsTd = document.createElement('td');
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'btn-delete delete-btn';
+      deleteBtn.dataset.recordId = String(recordId);
+      deleteBtn.textContent = 'Delete';
+      actionsTd.appendChild(deleteBtn);
+
+      tr.append(indexTd, idTd, timeTd, statusTd, actionsTd);
+      recordsBody.prepend(tr);
+      entry.rows.push(tr);
+
+      sessionRows.push({ recordId, id, scanTime, rowElement: tr });
+      refreshIdVisualState(id);
+
+      const suppressSignals = Boolean(options.suppressSignals);
+      const suppressStatus = Boolean(options.suppressStatus);
+
+      if (isDuplicate) {
+        if (!suppressStatus) {
+          setStatus('duplicate', `Duplicate found: ${id} (seen ${entry.count} times)`);
+        }
+        if (!suppressSignals) {
+          duplicateBeep();
+        }
+      } else {
+        if (!suppressStatus) {
+          setStatus('ok', `Verified & Scanned: ${id} (unique)`);
+        }
+      }
+
+      renumberVisibleRows();
+      updateStats();
+      scanInput.value = '';
+      scanInput.focus();
+    }
+
+    function splitCsvRow(row) {
+      return row
+        .split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/)
+        .map((cell) => cell.trim().replace(/^\"|\"$/g, '').replace(/\"\"/g, '\"'));
+    }
+
+    function parseImportIds(fileText) {
+      const lines = fileText
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      if (!lines.length) return [];
+
+      const csvLike = lines.some((line) => line.includes(','));
+      let startIndex = 0;
+      if (lines[0].toLowerCase().includes('rfid')) {
+        startIndex = 1;
+      }
+
+      const ids = [];
+      for (let i = startIndex; i < lines.length; i += 1) {
+        const cols = csvLike ? splitCsvRow(lines[i]) : [lines[i]];
+        if (!cols.length) continue;
+
+        let candidate = cols.length >= 2 ? cols[1] : cols[0];
+        candidate = candidate.trim();
+        if (!candidate || candidate.toLowerCase() === 'rfid id') continue;
+
+        ids.push(candidate);
+      }
+
+      return ids;
+    }
+
+    async function importRecordsFromFile() {
+      const file = importFileInput.files && importFileInput.files[0];
+      if (!file) return;
+
+      try {
+        const fileText = await file.text();
+        const ids = parseImportIds(fileText);
+        if (!ids.length) {
+          setStatus('ready', `No valid RFID IDs found in ${file.name}.`);
+          showToast(`No valid RFID IDs found in ${file.name}.`, 'warning');
+          return;
+        }
+
+        let importedCount = 0;
+        ids.forEach((id) => {
+          addScan(id, { suppressSignals: true, suppressStatus: true });
+          importedCount += 1;
+        });
+
+        setStatus('ok', `Imported ${importedCount} IDs from ${file.name}.`);
+        showToast({
+          title: 'Import Successful',
+          message: `Imported ${importedCount} RFID cards from ${file.name}.`,
+          type: 'success'
+        });
+      } catch (_) {
+        setStatus('duplicate', 'Import failed. Check the file format and try again.');
+        showToast('Import failed. Check the file format and try again.', 'error');
+      } finally {
+        importFileInput.value = '';
+        scanInput.focus();
+      }
+    }
+
+    function updateStats() {
+      const counts = Array.from(registry.values(), (x) => x.count);
+      const ids = Array.from(registry.keys());
+
+      const totalScans = counts.reduce((a, b) => a + b, 0);
+      const uniqueIds = registry.size;
+      const duplicateScans = counts.reduce((sum, c) => sum + Math.max(0, c - 1), 0);
+      const duplicatedIds = counts.filter((c) => c > 1).length;
+      const rate = totalScans ? ((duplicateScans / totalScans) * 100).toFixed(1) : '0.0';
+
+      totalScansEl.textContent = String(totalScans);
+      uniqueIdsEl.textContent = String(uniqueIds);
+      duplicateScansEl.textContent = String(duplicateScans);
+      duplicatedIdsEl.textContent = String(duplicatedIds);
+      duplicateRateEl.textContent = `${rate}%`;
+
+      let maxCount = 0;
+      let maxId = '-';
+      ids.forEach((id) => {
+        const c = registry.get(id).count;
+        if (c > maxCount) {
+          maxCount = c;
+          maxId = id;
+        }
+      });
+      mostRepeatedEl.textContent = maxCount > 1 ? `${maxId} (x${maxCount})` : '-';
+
+      const duplicated = ids
+        .map((id) => ({ id, count: registry.get(id).count }))
+        .filter((x) => x.count > 1)
+        .sort((a, b) => b.count - a.count);
+
+      duplicatesList.innerHTML = '';
+      if (!duplicated.length) {
+        const li = document.createElement('li');
+        li.textContent = 'No duplicate IDs yet.';
+        duplicatesList.appendChild(li);
+      } else {
+        duplicated.forEach((item) => {
+          const li = document.createElement('li');
+          li.textContent = `${item.id} -> ${item.count} scans`;
+          duplicatesList.appendChild(li);
+        });
+      }
+    }
+
+    function exportCsv() {
+      if (!sessionRows.length) {
+        setStatus('ready', 'No scans to export yet.');
+        showToast('No scans to export yet.', 'info');
+        return;
+      }
+
+      const header = ['Scan #', 'RFID ID', 'Scan Time', 'Status'];
+      const rows = sessionRows.map((row, index) => [
+        index + 1,
+        row.id,
+        row.scanTime,
+        (registry.get(row.id)?.count || 0) > 1 ? 'Duplicate' : 'Unique'
+      ]);
+
+      const csv = [header, ...rows]
+        .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rfid-scan-report-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      setStatus('ok', 'CSV export complete.');
+      showToast({
+        title: 'Export Complete',
+        message: `Exported ${sessionRows.length} scans to CSV.`,
+        type: 'success'
+      });
+      scanInput.focus();
+    }
+
+    function resetSession() {
+      clearTimeout(scanResetTimer);
+      pendingScans = [];
+      updateScanProgress(0);
+
+      registry.clear();
+      sessionRows.length = 0;
+      nextRecordId = 1;
+      recordsBody.innerHTML = '';
+      setStatus('ready', 'Session reset. Ready to scan.');
+      updateStats();
+      scanInput.value = '';
+      scanInput.focus();
+
+      showToast({
+        title: 'Session Reset',
+        message: 'All scan records and counters have been reset.',
+        type: 'info'
+      });
+    }
+
+    scanForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      handleScanInput(scanInput.value);
+    });
+
+    scanInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Tab' && scanInput.value.trim()) {
+        // Some HID scanners are configured to suffix Tab instead of Enter.
+        event.preventDefault();
+        handleScanInput(scanInput.value);
+      } else if (event.key === 'Escape') {
+        if (pendingScans.length > 0) {
+          clearTimeout(scanResetTimer);
+          pendingScans = [];
+          updateScanProgress(0);
+          setStatus('ready', 'Pending scan cancelled. Ready to scan.');
+          showToast('Verification cancelled.', 'info');
+        }
+      }
+    });
+
+    exportBtn.addEventListener('click', exportCsv);
+    importBtn.addEventListener('click', () => {
+      importFileInput.click();
+    });
+    importFileInput.addEventListener('change', importRecordsFromFile);
+    resetBtn.addEventListener('click', resetSession);
+    recordsBody.addEventListener('click', (event) => {
+      const deleteButton = event.target.closest('.delete-btn');
+      if (!deleteButton) return;
+
+      const recordId = Number(deleteButton.dataset.recordId);
+      if (!Number.isFinite(recordId)) return;
+      deleteScanRecord(recordId);
+    });
+
+    document.addEventListener('click', (e) => {
+      // Don't steal focus if clicking interactive elements
+      if (e.target.closest('button, input, a, .toast')) return;
+      if (document.activeElement !== scanInput) {
+        scanInput.focus();
+      }
+    });
+
+    updateStats();
+    scanInput.focus();
+  </script>
+</body>
+</html>

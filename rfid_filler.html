@@ -1,0 +1,2345 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RFID CSV Filler — Excel Spreadsheet Mode</title>
+  <style>
+    :root {
+      --bg: #f4f7f9;
+      --card: #ffffff;
+      --ink: #1e293b;
+      --muted: #64748b;
+      --line: #cbd5e1;
+      --line-light: #e2e8f0;
+      --brand: #0f766e;
+      --brand-hover: #0d655e;
+      --brand-soft: #ccfbf1;
+      --brand-glow: rgba(15, 118, 110, 0.25);
+      --accent: #ea580c;
+      --ok-bg: #dcfce7;
+      --ok-ink: #166534;
+      --dup-bg: #fee2e2;
+      --dup-ink: #991b1b;
+      --warn-bg: #ffedd5;
+      --warn-ink: #9a3412;
+      --active-row-bg: #f0fdfa;
+      --active-cell-border: #0d9488;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 92% 8%, #c8f7ef 0%, rgba(200, 247, 239, 0) 30%),
+        radial-gradient(circle at 8% 92%, #ffe7d1 0%, rgba(255, 231, 209, 0) 30%),
+        var(--bg);
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .app-container {
+      max-width: 1460px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Top Card / Header */
+    .header-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 18px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header-left h1 {
+      margin: 0;
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge-tag {
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+    }
+
+    .badge-tag.badge-teal {
+      background: #ccfbf1;
+      color: #0f766e;
+      border: 1px solid #99f6e4;
+    }
+
+    .badge-tag.badge-blue {
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+
+    .header-subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 13px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.86rem;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    .btn-brand {
+      background: var(--brand);
+      color: #ffffff;
+    }
+    .btn-brand:hover { background: var(--brand-hover); }
+
+    .btn-primary {
+      background: #1e3a8a;
+      color: #ffffff;
+    }
+    .btn-primary:hover { background: #172554; }
+
+    .btn-dark {
+      background: #0f172a;
+      color: #ffffff;
+    }
+    .btn-dark:hover { background: #1e293b; }
+
+    .btn-outline {
+      background: #ffffff;
+      color: #334155;
+      border: 1px solid var(--line);
+    }
+    .btn-outline:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+
+    .btn-outline.active {
+      background: var(--brand-soft);
+      border-color: var(--brand);
+      color: var(--brand);
+    }
+
+    .btn-danger-outline {
+      background: #ffffff;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+    .btn-danger-outline:hover { background: #fef2f2; }
+
+    .btn-sm {
+      padding: 5px 9px;
+      font-size: 0.8rem;
+      border-radius: 6px;
+    }
+
+    /* Stats Grid */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 12px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: #cbd5e1;
+    }
+
+    .stat-card.stat-total::after { background: #3b82f6; }
+    .stat-card.stat-filled::after { background: #10b981; }
+    .stat-card.stat-pending::after { background: #f59e0b; }
+    .stat-card.stat-duplicates::after { background: #ef4444; }
+    .stat-card.stat-progress::after { background: #0f766e; }
+
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .stat-val-wrap {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+
+    .stat-val {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #0f172a;
+      font-feature-settings: "tnum";
+    }
+
+    .stat-desc {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    /* Spreadsheet Grid Card */
+    .grid-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .grid-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-pill {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-pill:hover { background: #e2e8f0; }
+
+    .filter-pill.active {
+      background: #0f766e;
+      color: #ffffff;
+      border-color: #0f766e;
+    }
+
+    .grid-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .search-input {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.84rem;
+      outline: none;
+      width: 220px;
+      font-family: inherit;
+    }
+
+    .search-input:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px var(--brand-glow);
+    }
+
+    /* Active Scan Status Banner */
+    .scan-status-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #f0fdfa;
+      border: 1px solid #99f6e4;
+      font-size: 0.86rem;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .scan-status-strip .record-highlight {
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .scan-status-strip .status-msg {
+      color: #0f766e;
+      font-weight: 600;
+    }
+
+    .scan-status-strip.status-mismatch {
+      background: #fff1f2;
+      border-color: #fecdd3;
+    }
+    .scan-status-strip.status-mismatch .status-msg {
+      color: #be123c;
+    }
+
+    /* Excel Spreadsheet Table Viewport */
+    .table-viewport {
+      max-height: 600px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      position: relative;
+      background: #ffffff;
+      min-height: 280px;
+    }
+
+    table.excel-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 1220px;
+      font-size: 0.88rem;
+    }
+
+    /* Sticky Headers */
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 700;
+      padding: 7px 10px;
+      text-align: left;
+      border-bottom: 2px solid #cbd5e1;
+      border-right: 1px solid #e2e8f0;
+      z-index: 10;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    thead th .col-letter {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    thead th .th-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .col-lock-btn {
+      background: transparent;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      color: #475569;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: all 0.15s ease;
+    }
+
+    .col-lock-btn:hover { background: #e2e8f0; }
+
+    .col-lock-btn.unlocked {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #86efac;
+    }
+
+    /* Sticky Row Index Column */
+    td.row-idx, th.col-row-idx {
+      position: sticky;
+      left: 0;
+      width: 46px;
+      min-width: 46px;
+      max-width: 46px;
+      text-align: center;
+      background: #f8fafc;
+      color: #64748b;
+      font-weight: 700;
+      font-size: 0.78rem;
+      border-right: 2px solid #cbd5e1;
+      user-select: none;
+      z-index: 5;
+    }
+
+    thead th.col-row-idx {
+      z-index: 20;
+      background: #f1f5f9;
+    }
+
+    /* Cells */
+    td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      border-right: 1px solid #f1f5f9;
+      color: #1e293b;
+      vertical-align: middle;
+      font-family: inherit;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      max-width: 240px;
+    }
+
+    /* RFID Column Cell (Inline Scanner Target) */
+    td.cell-rfid {
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+      font-size: 0.92rem;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      position: relative;
+      min-width: 250px;
+      max-width: 280px;
+      padding: 4px 6px;
+    }
+
+    td.cell-rfid.empty-rfid {
+      color: #94a3b8;
+      font-style: italic;
+      font-family: inherit;
+      font-size: 0.84rem;
+    }
+
+    td.cell-editable {
+      cursor: text;
+    }
+    td.cell-editable:hover {
+      background-color: #f8fafc;
+      box-shadow: inset 0 0 0 1px #cbd5e1;
+    }
+
+    /* Active Row */
+    tr.active-row {
+      background-color: var(--active-row-bg) !important;
+    }
+
+    tr.active-row td.row-idx {
+      background-color: #ccfbf1;
+      color: #0f766e;
+      font-weight: 800;
+      border-right-color: #0d9488;
+    }
+
+    /* Active Inline Scanner Cell in the Grid */
+    td.cell-rfid.active-scan-cell {
+      padding: 2px 4px !important;
+      background-color: #ffffff !important;
+      box-shadow: inset 0 0 0 2px var(--active-cell-border);
+      position: relative;
+      overflow: visible;
+      z-index: 4;
+    }
+
+    .inline-scanner-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+      height: 34px;
+      background: #ffffff;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .inline-scanner-box.mismatch-shake {
+      animation: cellShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+      background: #fef2f2 !important;
+      box-shadow: inset 0 0 0 2px #ef4444;
+    }
+
+    @keyframes cellShake {
+      10%, 90% { transform: translate3d(-3px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+      40%, 60% { transform: translate3d(5px, 0, 0); }
+    }
+
+    .inline-progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(204, 251, 241, 0.75) 0%, rgba(153, 246, 228, 0.95) 100%);
+      border-right: 2px solid #0d9488;
+      transition: width 0.22s ease;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .inline-progress-fill.success {
+      background: linear-gradient(90deg, rgba(187, 247, 208, 0.85) 0%, rgba(134, 239, 172, 0.95) 100%);
+      border-right-color: #16a34a;
+    }
+
+    .inline-progress-fill.mismatch {
+      background: linear-gradient(90deg, rgba(254, 226, 226, 0.9) 0%, rgba(252, 165, 165, 0.95) 100%);
+      border-right-color: #dc2626;
+    }
+
+    .inline-scan-input {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      padding: 4px 115px 4px 8px;
+      font-size: 0.94rem;
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: 0.5px;
+    }
+
+    .inline-scan-input::placeholder {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-weight: normal;
+      color: #94a3b8;
+      font-size: 0.82rem;
+      letter-spacing: normal;
+    }
+
+    .inline-step-pill {
+      position: absolute;
+      right: 6px;
+      z-index: 3;
+      pointer-events: none;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: var(--muted);
+      border: 1px solid #cbd5e1;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .inline-step-pill.step-1 {
+      background: #ccfbf1;
+      color: #0f766e;
+      border-color: #5eead4;
+    }
+
+    .inline-step-pill.step-2 {
+      background: #99f6e4;
+      color: #115e59;
+      border-color: #2dd4bf;
+      box-shadow: 0 0 6px rgba(20, 184, 166, 0.25);
+    }
+
+    .inline-step-pill.step-3 {
+      background: #86efac;
+      color: #14532d;
+      border-color: #4ade80;
+    }
+
+    .inline-step-pill.step-mismatch {
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #fca5a5;
+    }
+
+    /* Duplicate Row & RFID Tag */
+    tr.duplicate-rfid-row { background-color: #fff5f5; }
+
+    .rfid-pill-val {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+    }
+
+    .rfid-pill-val.dup { color: #dc2626; }
+
+    .badge-dup {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+      font-size: 0.68rem;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-weight: 800;
+    }
+
+    /* Inline Input for Locked/Unlocked text columns */
+    .cell-inline-input {
+      width: 100%;
+      border: 1px solid var(--brand);
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: inherit;
+      font-family: inherit;
+      outline: none;
+      background: #ffffff;
+      box-shadow: 0 0 0 2px var(--brand-glow);
+    }
+
+    /* Generic Empty State & Dropzone */
+    .empty-dropzone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      text-align: center;
+      background: #fbfdfe;
+      border: 2px dashed #cbd5e1;
+      border-radius: 10px;
+      margin: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .empty-dropzone:hover, .empty-dropzone.drag-active {
+      border-color: var(--brand);
+      background: #f0fdfa;
+      box-shadow: 0 0 0 4px var(--brand-glow);
+    }
+
+    .empty-dropzone-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+
+    .empty-dropzone-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 6px;
+    }
+
+    .empty-dropzone-desc {
+      font-size: 0.9rem;
+      color: var(--muted);
+      max-width: 500px;
+      line-height: 1.4;
+      margin: 0 0 16px;
+    }
+
+    .empty-dropzone-schema {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      max-width: 680px;
+      margin-top: 14px;
+    }
+
+    .schema-pill {
+      font-size: 0.72rem;
+      font-family: monospace;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .schema-pill.target-pill {
+      background: #ccfbf1;
+      color: #0f766e;
+      border-color: #5eead4;
+    }
+
+    /* Toast Notification System */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 999999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 420px;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 11px 15px;
+      box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.88rem;
+      line-height: 1.4;
+      border: 1px solid #e2e8f0;
+      border-left: 5px solid #64748b;
+      animation: toastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .toast.toast-error { border-left-color: #dc2626; background: #fffbfb; }
+    .toast.toast-warning { border-left-color: #ea580c; background: #fffdfb; }
+    .toast.toast-success { border-left-color: #16a34a; background: #fbfdfb; }
+    .toast.toast-info { border-left-color: #0284c7; background: #f8fafc; }
+
+    .toast-icon {
+      font-size: 1.2rem;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .toast-content { flex: 1; color: var(--ink); }
+    .toast-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 2px; }
+    .toast-message { color: #475569; font-size: 0.84rem; word-break: break-word; }
+
+    .toast-close {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 0 4px;
+      font-size: 1.2rem;
+      line-height: 1;
+      border-radius: 4px;
+    }
+    .toast-close:hover { color: var(--ink); }
+
+    .toast.toast-hide {
+      opacity: 0;
+      transform: translateX(30px) scale(0.95);
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      padding: 20px;
+    }
+
+    .modal-card {
+      background: #ffffff;
+      border-radius: 14px;
+      max-width: 580px;
+      width: 100%;
+      padding: 24px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+      border: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .header-compare-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.82rem;
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+    .header-compare-box .expected { color: #166534; font-weight: 700; }
+    .header-compare-box .actual { color: #991b1b; font-weight: 700; }
+
+    @media (max-width: 900px) {
+      body { padding: 8px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .header-card { flex-direction: column; align-items: flex-start; }
+      .header-controls { width: 100%; justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <div class="app-container">
+    <!-- Header Card -->
+    <header class="header-card">
+      <div class="header-left">
+        <h1>
+          RFID CSV Filler
+          <span class="badge-tag badge-teal">Inline 3-Scan Grid</span>
+          <span class="badge-tag badge-blue">Multi-CSV Support</span>
+        </h1>
+        <p class="header-subtitle">
+          Spreadsheet workflow with <strong>inline cell scanning</strong>. Import single or multiple CSV files, append datasets, and scan RFID cards <strong>3 times</strong> consecutively.
+        </p>
+      </div>
+      <div class="header-controls">
+        <a href="index.html" class="btn-outline" style="text-decoration: none;" title="Back to Tools Portal">
+          🏠 Tools Portal
+        </a>
+        <button id="freshImportBtn" class="btn-primary" type="button" title="Import one or more CSV files (replaces current list)">
+          📁 Fresh Import
+        </button>
+        <button id="appendImportBtn" class="btn-brand" type="button" title="Append one or more CSV files to the current list">
+          ➕ Append Import
+        </button>
+        <button id="exportBtn" class="btn-dark" type="button" title="Export updated CSV with preserved strings">
+          💾 Export CSV
+        </button>
+        <button id="clearAllBtn" class="btn-danger-outline btn-sm" type="button" title="Clear all rows and reset">
+          🗑️ Clear
+        </button>
+        <button id="muteBtn" class="btn-outline btn-sm" type="button" title="Toggle Sound Feedback">
+          <span id="muteIcon">🔊</span> Sound On
+        </button>
+        <!-- Multiple file inputs for Fresh and Append modes -->
+        <input id="freshFileInput" type="file" accept=".csv,text/csv" multiple hidden>
+        <input id="appendFileInput" type="file" accept=".csv,text/csv" multiple hidden>
+      </div>
+    </header>
+
+    <!-- Stats Summary Row -->
+    <section class="stats-row">
+      <div class="stat-card stat-total">
+        <div class="stat-label">Total Records</div>
+        <div class="stat-val-wrap">
+          <div id="statTotal" class="stat-val">0</div>
+          <div class="stat-desc">rows loaded</div>
+        </div>
+      </div>
+      <div class="stat-card stat-filled">
+        <div class="stat-label">RFIDs Populated</div>
+        <div class="stat-val-wrap">
+          <div id="statFilled" class="stat-val">0</div>
+          <div id="statFilledPct" class="stat-desc">0% done</div>
+        </div>
+      </div>
+      <div class="stat-card stat-pending">
+        <div class="stat-label">RFIDs Remaining</div>
+        <div class="stat-val-wrap">
+          <div id="statRemaining" class="stat-val">0</div>
+          <div class="stat-desc">unassigned</div>
+        </div>
+      </div>
+      <div class="stat-card stat-duplicates">
+        <div class="stat-label">Duplicate RFIDs</div>
+        <div class="stat-val-wrap">
+          <div id="statDuplicates" class="stat-val">0</div>
+          <div class="stat-desc">conflicts</div>
+        </div>
+      </div>
+      <div class="stat-card stat-progress">
+        <div class="stat-label">Progress</div>
+        <div class="stat-val-wrap">
+          <div id="statProgressPct" class="stat-val">0%</div>
+          <div id="statActiveRowIndex" class="stat-desc">Row: -</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Excel Spreadsheet Grid Card -->
+    <section class="grid-card">
+      <div class="grid-toolbar">
+        <div class="filter-group">
+          <button class="filter-pill active" data-filter="all" id="filterAllBtn">All Rows (0)</button>
+          <button class="filter-pill" data-filter="unfilled" id="filterUnfilledBtn">Pending RFID (0)</button>
+          <button class="filter-pill" data-filter="filled" id="filterFilledBtn">Filled (0)</button>
+          <button class="filter-pill" data-filter="duplicates" id="filterDuplicatesBtn">Duplicates (0)</button>
+        </div>
+        <div class="grid-actions">
+          <button class="btn-outline btn-sm" id="jumpNextUnfilledBtn" type="button" title="Jump to next unfilled row">
+            ⏩ Next Unfilled
+          </button>
+          <button class="btn-outline btn-sm" id="clearCurrentRfidBtn" type="button" title="Clear RFID for active row">
+            ❌ Clear Cell
+          </button>
+          <button class="btn-outline btn-sm" id="manualEditToggleBtn" type="button" title="Toggle 1-scan manual mode">
+            ✏️ Direct 1-Scan
+          </button>
+          <input
+            type="search"
+            id="gridSearchInput"
+            class="search-input"
+            placeholder="🔍 Search name, id, rfid..."
+          >
+        </div>
+      </div>
+
+      <!-- Compact Active Scan Status Strip -->
+      <div class="scan-status-strip" id="scanStatusStrip">
+        <div>
+          <span>Target: </span>
+          <span class="record-highlight" id="activeRecordName">No CSV File Imported</span>
+          <span id="activeRecordMeta" style="color: var(--muted); margin-left: 8px;"></span>
+        </div>
+        <div class="status-msg" id="activeStatusMsg">
+          Please import a CSV file to begin scanning.
+        </div>
+      </div>
+
+      <!-- Excel Table Viewport -->
+      <div class="table-viewport" id="tableViewport">
+        <table class="excel-table" id="excelTable">
+          <thead>
+            <tr id="tableHeaderRow">
+              <th class="col-row-idx">
+                <span class="col-letter">#</span>
+                <span>Row</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Populated via renderTable() -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Strict Header Error Modal -->
+  <div class="modal-overlay" id="errorModal" style="display: none;">
+    <div class="modal-card">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="font-size: 2rem; color: #dc2626;">⚠️</div>
+        <div>
+          <h2 style="margin: 0; font-size: 1.2rem; color: #1e293b;">CSV Header Schema Error</h2>
+          <div style="font-size: 0.85rem; color: #64748b;">File rejected due to header mismatch</div>
+        </div>
+      </div>
+      <div>
+        <p style="font-size: 0.92rem; color: #475569; line-height: 1.5; margin: 0 0 8px;">
+          The imported CSV headers must strictly match the expected columns in both casing and order.
+        </p>
+        <div id="modalErrorMessage" style="font-weight: 600; color: #b91c1c; margin-bottom: 8px;"></div>
+        <div class="header-compare-box">
+          <div><span class="expected">Strict Expected:</span> <span id="modalExpectedHeaders"></span></div>
+          <div style="margin-top: 6px;"><span class="actual">File Found:</span> <span id="modalActualHeaders"></span></div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end;">
+        <button class="btn-dark" id="closeModalBtn" type="button">Understood</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drop Action Modal (When dropping files into existing list) -->
+  <div class="modal-overlay" id="dropActionModal" style="display: none;">
+    <div class="modal-card">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="font-size: 2rem; color: #0f766e;">📥</div>
+        <div>
+          <h2 style="margin: 0; font-size: 1.2rem; color: #1e293b;">Import Mode Selection</h2>
+          <div style="font-size: 0.85rem; color: #64748b;" id="dropModalSubtitle">Files dropped</div>
+        </div>
+      </div>
+      <div>
+        <p style="font-size: 0.92rem; color: #475569; line-height: 1.5; margin: 0 0 14px;">
+          You currently have <strong id="dropModalCurrentCount" style="color: #0f766e;">0</strong> records loaded. Choose how you would like to import the new file(s):
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn-brand" id="dropModalAppendBtn" type="button" style="justify-content: center; padding: 12px 16px; font-size: 0.95rem;">
+            ➕ Append to Current List (Keep existing records & scans)
+          </button>
+          <button class="btn-danger-outline" id="dropModalFreshBtn" type="button" style="justify-content: center; padding: 12px 16px; font-size: 0.95rem;">
+            📁 Fresh Import (Replace all existing records)
+          </button>
+          <button class="btn-outline" id="dropModalCancelBtn" type="button" style="justify-content: center; padding: 10px;">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       SCHEMA DEFINITION & COLUMN MAPPING
+       ========================================================================== */
+    const EXPECTED_COLUMNS = [
+      { key: "admission_no", label: "admission_no", letter: "A", defaultEditable: false },
+      { key: "full_name", label: "full_name", letter: "B", defaultEditable: false },
+      { key: "grade", label: "grade", letter: "C", defaultEditable: false },
+      { key: "class_name", label: "class_name", letter: "D", defaultEditable: false },
+      { key: "rfid_uid", label: "rfid_uid", letter: "E", defaultEditable: true },
+      { key: "guardian_name", label: "guardian_name", letter: "F", defaultEditable: false },
+      { key: "guardian_phone", label: "guardian_phone", letter: "G", defaultEditable: false },
+      { key: "address", label: "address", letter: "H", defaultEditable: false },
+      { key: "is_active", label: "is_active", letter: "I", defaultEditable: false }
+    ];
+
+    const STRICT_HEADER_KEYS = EXPECTED_COLUMNS.map(c => c.key);
+
+    /* ==========================================================================
+       APPLICATION STATE
+       ========================================================================== */
+    let records = [];
+    let activeRowIndex = -1;
+    let originalFileName = "";
+    let isMuted = localStorage.getItem("rfid_sound_muted") === "true";
+    let manualDirectMode = false;
+    let currentFilter = "all";
+    let currentSearchTerm = "";
+    let hasUnsavedChanges = false;
+    let pendingDroppedFiles = null;
+
+    const columnEditability = {};
+    EXPECTED_COLUMNS.forEach(col => {
+      columnEditability[col.key] = col.defaultEditable;
+    });
+
+    // 3-Scan verification state
+    let pendingScans = [];
+    let scanResetTimer = null;
+    let audioCtx = null;
+
+    /* ==========================================================================
+       DOM ELEMENTS
+       ========================================================================== */
+    const freshImportBtn = document.getElementById("freshImportBtn");
+    const appendImportBtn = document.getElementById("appendImportBtn");
+    const exportBtn = document.getElementById("exportBtn");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    const muteBtn = document.getElementById("muteBtn");
+    const muteIcon = document.getElementById("muteIcon");
+    const freshFileInput = document.getElementById("freshFileInput");
+    const appendFileInput = document.getElementById("appendFileInput");
+    const toastContainer = document.getElementById("toastContainer");
+
+    const statTotal = document.getElementById("statTotal");
+    const statFilled = document.getElementById("statFilled");
+    const statFilledPct = document.getElementById("statFilledPct");
+    const statRemaining = document.getElementById("statRemaining");
+    const statDuplicates = document.getElementById("statDuplicates");
+    const statProgressPct = document.getElementById("statProgressPct");
+    const statActiveRowIndex = document.getElementById("statActiveRowIndex");
+
+    const scanStatusStrip = document.getElementById("scanStatusStrip");
+    const activeRecordName = document.getElementById("activeRecordName");
+    const activeRecordMeta = document.getElementById("activeRecordMeta");
+    const activeStatusMsg = document.getElementById("activeStatusMsg");
+
+    const jumpNextUnfilledBtn = document.getElementById("jumpNextUnfilledBtn");
+    const clearCurrentRfidBtn = document.getElementById("clearCurrentRfidBtn");
+    const manualEditToggleBtn = document.getElementById("manualEditToggleBtn");
+
+    const tableHeaderRow = document.getElementById("tableHeaderRow");
+    const tableBody = document.getElementById("tableBody");
+    const tableViewport = document.getElementById("tableViewport");
+    const gridSearchInput = document.getElementById("gridSearchInput");
+
+    const filterAllBtn = document.getElementById("filterAllBtn");
+    const filterUnfilledBtn = document.getElementById("filterUnfilledBtn");
+    const filterFilledBtn = document.getElementById("filterFilledBtn");
+    const filterDuplicatesBtn = document.getElementById("filterDuplicatesBtn");
+
+    const errorModal = document.getElementById("errorModal");
+    const modalErrorMessage = document.getElementById("modalErrorMessage");
+    const modalExpectedHeaders = document.getElementById("modalExpectedHeaders");
+    const modalActualHeaders = document.getElementById("modalActualHeaders");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+
+    const dropActionModal = document.getElementById("dropActionModal");
+    const dropModalSubtitle = document.getElementById("dropModalSubtitle");
+    const dropModalCurrentCount = document.getElementById("dropModalCurrentCount");
+    const dropModalAppendBtn = document.getElementById("dropModalAppendBtn");
+    const dropModalFreshBtn = document.getElementById("dropModalFreshBtn");
+    const dropModalCancelBtn = document.getElementById("dropModalCancelBtn");
+
+    /* ==========================================================================
+       SOUND MUTE INITIALIZATION
+       ========================================================================== */
+    if (isMuted) {
+      muteIcon.textContent = "🔇";
+      muteBtn.innerHTML = `<span>🔇</span> Sound Off`;
+      muteBtn.classList.add("active");
+    }
+
+    /* ==========================================================================
+       WEB AUDIO SYNTHESIZER
+       ========================================================================== */
+    function getAudioContext() {
+      if (isMuted) return null;
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return null;
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playStepBeep(step) {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const freq = step === 1 ? 587.33 : 783.99; // D5 for 1, G5 for 2
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.09);
+      } catch (_) {}
+    }
+
+    function playVerifySuccessBeep() {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      try {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = "triangle";
+        osc1.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(880.00, ctx.currentTime); // A5
+
+        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(ctx.currentTime + 0.18);
+        osc2.stop(ctx.currentTime + 0.18);
+      } catch (_) {}
+    }
+
+    function playMismatchBeep() {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(260, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(130, ctx.currentTime + 0.22);
+
+        gain.gain.setValueAtTime(0.001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.22);
+      } catch (_) {}
+
+      if (navigator.vibrate) navigator.vibrate([100, 60, 100]);
+    }
+
+    function playDuplicateBeep() {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(680, ctx.currentTime);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+      } catch (_) {}
+
+      if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+    }
+
+    /* ==========================================================================
+       TOAST SYSTEM
+       ========================================================================== */
+    function showToast(options) {
+      let title = "";
+      let message = "";
+      let type = "info";
+      let duration = 3800;
+
+      if (typeof options === "string") {
+        message = options;
+        type = arguments[1] || "info";
+      } else if (typeof options === "object") {
+        title = options.title || "";
+        message = options.message || "";
+        type = options.type || "info";
+        duration = options.duration !== undefined ? options.duration : 3800;
+      }
+
+      const icons = { error: "⚠️", warning: "⚡", success: "✅", info: "ℹ️" };
+      const defaultTitles = { error: "Notice", warning: "Warning", success: "Success", info: "Notice" };
+
+      const toast = document.createElement("div");
+      toast.className = `toast toast-${type}`;
+
+      const iconEl = document.createElement("div");
+      iconEl.className = "toast-icon";
+      iconEl.textContent = icons[type] || "ℹ️";
+
+      const contentEl = document.createElement("div");
+      contentEl.className = "toast-content";
+
+      const titleEl = document.createElement("div");
+      titleEl.className = "toast-title";
+      titleEl.textContent = title || defaultTitles[type] || "Notification";
+
+      const msgEl = document.createElement("div");
+      msgEl.className = "toast-message";
+      msgEl.textContent = message;
+
+      contentEl.appendChild(titleEl);
+      contentEl.appendChild(msgEl);
+
+      const closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.className = "toast-close";
+      closeBtn.innerHTML = "&times;";
+
+      let removed = false;
+      function removeToast() {
+        if (removed) return;
+        removed = true;
+        toast.classList.add("toast-hide");
+        setTimeout(() => toast.remove(), 260);
+      }
+
+      closeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeToast();
+      });
+
+      toast.appendChild(iconEl);
+      toast.appendChild(contentEl);
+      toast.appendChild(closeBtn);
+      toastContainer.appendChild(toast);
+
+      if (duration > 0) setTimeout(removeToast, duration);
+    }
+
+    /* ==========================================================================
+       ROBUST CSV PARSER & EXPORTER (Pure String Guarantee)
+       ========================================================================== */
+    function parseCSV(text) {
+      if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.slice(1);
+      }
+
+      const rows = [];
+      let currentRow = [];
+      let currentVal = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const next = text[i + 1];
+
+        if (inQuotes) {
+          if (ch === '"') {
+            if (next === '"') {
+              currentVal += '"';
+              i++;
+            } else {
+              inQuotes = false;
+            }
+          } else {
+            currentVal += ch;
+          }
+        } else {
+          if (ch === '"') {
+            inQuotes = true;
+          } else if (ch === ",") {
+            currentRow.push(currentVal.trim());
+            currentVal = "";
+          } else if (ch === "\r") {
+            if (next === "\n") i++;
+            currentRow.push(currentVal.trim());
+            if (currentRow.some(c => c.length > 0)) rows.push(currentRow);
+            currentRow = [];
+            currentVal = "";
+          } else if (ch === "\n") {
+            currentRow.push(currentVal.trim());
+            if (currentRow.some(c => c.length > 0)) rows.push(currentRow);
+            currentRow = [];
+            currentVal = "";
+          } else {
+            currentVal += ch;
+          }
+        }
+      }
+
+      if (currentVal.length > 0 || currentRow.length > 0) {
+        currentRow.push(currentVal.trim());
+        if (currentRow.some(c => c.length > 0)) rows.push(currentRow);
+      }
+
+      return rows;
+    }
+
+    function exportToCSV() {
+      if (!records.length) {
+        showToast("No data to export. Please import a CSV first.", "warning");
+        return;
+      }
+
+      const headerLine = STRICT_HEADER_KEYS.join(",");
+      const lines = [headerLine];
+
+      records.forEach(record => {
+        const line = STRICT_HEADER_KEYS.map(key => {
+          const raw = record[key] !== undefined && record[key] !== null ? String(record[key]) : "";
+          if (raw.includes(",") || raw.includes('"') || raw.includes("\n") || raw.includes("\r")) {
+            return `"${raw.replace(/"/g, '""')}"`;
+          }
+          return raw;
+        }).join(",");
+        lines.push(line);
+      });
+
+      const csvContent = "\uFEFF" + lines.join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const baseName = originalFileName ? originalFileName.replace(/\.[^/.]+$/, "") : "records";
+      a.href = url;
+      a.download = `${baseName}_updated_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      hasUnsavedChanges = false;
+
+      showToast({
+        title: "Export Successful",
+        message: `Exported ${records.length} records with preserved strings.`,
+        type: "success"
+      });
+      focusActiveInlineInput();
+    }
+
+    /* ==========================================================================
+       MULTI-CSV PARSER & VALIDATION (Fresh & Append Modes)
+       ========================================================================== */
+    function parseAndValidateCSV(csvString, fileName) {
+      const parsedRows = parseCSV(csvString);
+      if (!parsedRows.length) {
+        return { success: false, error: "File is empty or contains no data." };
+      }
+
+      const fileHeaders = parsedRows[0].map(h => h.trim());
+      if (fileHeaders.length !== STRICT_HEADER_KEYS.length) {
+        return {
+          success: false,
+          error: `Expected ${STRICT_HEADER_KEYS.length} columns, but found ${fileHeaders.length} columns.`,
+          foundHeaders: fileHeaders
+        };
+      }
+
+      for (let i = 0; i < STRICT_HEADER_KEYS.length; i++) {
+        if (fileHeaders[i] !== STRICT_HEADER_KEYS[i]) {
+          return {
+            success: false,
+            error: `Column #${i + 1} mismatch: strictly expected '${STRICT_HEADER_KEYS[i]}' but found '${fileHeaders[i]}'. Column order and casing must match.`,
+            foundHeaders: fileHeaders
+          };
+        }
+      }
+
+      const batchRecords = [];
+      for (let r = 1; r < parsedRows.length; r++) {
+        const row = parsedRows[r];
+        const record = {};
+        STRICT_HEADER_KEYS.forEach((key, colIdx) => {
+          record[key] = row[colIdx] !== undefined ? String(row[colIdx]) : "";
+        });
+        batchRecords.push(record);
+      }
+
+      return { success: true, records: batchRecords };
+    }
+
+    async function handleFilesImport(fileList, mode = "fresh") {
+      if (!fileList || fileList.length === 0) return;
+
+      const files = Array.from(fileList);
+      const parsedBatches = [];
+
+      for (const file of files) {
+        try {
+          const text = await file.text();
+          const res = parseAndValidateCSV(text, file.name);
+          if (!res.success) {
+            modalErrorMessage.textContent = `File "${file.name}" error: ${res.error}`;
+            modalExpectedHeaders.textContent = STRICT_HEADER_KEYS.join(", ");
+            modalActualHeaders.textContent = res.foundHeaders ? res.foundHeaders.join(", ") : "None";
+            errorModal.style.display = "flex";
+            playMismatchBeep();
+            return;
+          }
+          parsedBatches.push({ fileName: file.name, records: res.records });
+        } catch (err) {
+          showToast(`Failed to read "${file.name}": ${err.message}`, "error");
+          return;
+        }
+      }
+
+      const totalNew = parsedBatches.reduce((sum, b) => sum + b.records.length, 0);
+
+      if (mode === "fresh") {
+        records = [];
+        parsedBatches.forEach(b => records.push(...b.records));
+        originalFileName = files.length === 1 ? files[0].name : "combined_records.csv";
+        hasUnsavedChanges = false;
+
+        showToast({
+          title: "Fresh Import Complete",
+          message: `Loaded ${totalNew} records from ${files.length} file(s). Ready to scan.`,
+          type: "success"
+        });
+      } else {
+        // Append mode
+        const prevCount = records.length;
+        parsedBatches.forEach(b => records.push(...b.records));
+        hasUnsavedChanges = true;
+
+        if (!originalFileName) {
+          originalFileName = files.length === 1 ? files[0].name : "combined_records.csv";
+        }
+
+        showToast({
+          title: "Appended Successfully",
+          message: `Added ${totalNew} records from ${files.length} file(s). Total: ${records.length} records.`,
+          type: "success"
+        });
+      }
+
+      resetScanBuffer();
+      const firstUnfilled = records.findIndex(s => !s.rfid_uid || !s.rfid_uid.trim());
+      activeRowIndex = firstUnfilled !== -1 ? firstUnfilled : 0;
+
+      renderHeader();
+      renderTable();
+      updateStats();
+      updateStatusStrip();
+
+      setTimeout(focusActiveInlineInput, 80);
+    }
+
+    function getDuplicateRfidMap() {
+      const counts = new Map();
+      records.forEach(s => {
+        const r = (s.rfid_uid || "").trim();
+        if (r) counts.set(r, (counts.get(r) || 0) + 1);
+      });
+      return counts;
+    }
+
+    /* ==========================================================================
+       GRID RENDERING & INLINE CELL SCANNER
+       ========================================================================== */
+    function renderHeader() {
+      tableHeaderRow.innerHTML = "";
+
+      const rowIdxTh = document.createElement("th");
+      rowIdxTh.className = "col-row-idx";
+      rowIdxTh.innerHTML = `<span class="col-letter">#</span><span>Row</span>`;
+      tableHeaderRow.appendChild(rowIdxTh);
+
+      EXPECTED_COLUMNS.forEach(col => {
+        const th = document.createElement("th");
+        const isEditable = Boolean(columnEditability[col.key]);
+
+        const thContent = document.createElement("div");
+        thContent.className = "th-content";
+
+        const titleBox = document.createElement("div");
+        titleBox.innerHTML = `<span class="col-letter">${col.letter}</span><span>${col.label}</span>`;
+
+        const lockBtn = document.createElement("button");
+        lockBtn.type = "button";
+        lockBtn.className = `col-lock-btn ${isEditable ? "unlocked" : ""}`;
+        lockBtn.title = isEditable ? "Click to lock column editing" : "Click to enable column editing";
+        lockBtn.innerHTML = isEditable ? "🔓 Edit" : "🔒 Lock";
+
+        lockBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          toggleColumnEditable(col.key);
+        });
+
+        thContent.appendChild(titleBox);
+        thContent.appendChild(lockBtn);
+        th.appendChild(thContent);
+        tableHeaderRow.appendChild(th);
+      });
+    }
+
+    function toggleColumnEditable(columnKey) {
+      columnEditability[columnKey] = !columnEditability[columnKey];
+      const isNow = columnEditability[columnKey];
+      renderHeader();
+      renderTable();
+
+      showToast({
+        title: isNow ? "Column Unlocked" : "Column Locked",
+        message: isNow
+          ? `Editing enabled for column "${columnKey}". Double-click cells to edit.`
+          : `Editing locked for column "${columnKey}".`,
+        type: isNow ? "info" : "warning"
+      });
+      focusActiveInlineInput();
+    }
+
+    function renderTable() {
+      tableBody.innerHTML = "";
+
+      if (!records.length) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="10" style="padding: 0; border: none;">
+              <div class="empty-dropzone" id="emptyDropzone">
+                <div class="empty-dropzone-icon">📥</div>
+                <h3 class="empty-dropzone-title">Drag & Drop CSV File(s) Here</h3>
+                <p class="empty-dropzone-desc">
+                  Select one or multiple CSV files to start filling RFID cards. Use <strong>Fresh Import</strong> to start a new list or <strong>Append Import</strong> to add more records.
+                </p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                  <button class="btn-primary" type="button" onclick="document.getElementById('freshFileInput').click()">
+                    📁 Fresh Import CSV
+                  </button>
+                  <button class="btn-brand" type="button" onclick="document.getElementById('appendFileInput').click()">
+                    ➕ Append Import
+                  </button>
+                </div>
+                <div class="empty-dropzone-schema">
+                  <span class="schema-pill">admission_no</span>
+                  <span class="schema-pill">full_name</span>
+                  <span class="schema-pill">grade</span>
+                  <span class="schema-pill">class_name</span>
+                  <span class="schema-pill target-pill">rfid_uid (Target)</span>
+                  <span class="schema-pill">guardian_name</span>
+                  <span class="schema-pill">guardian_phone</span>
+                  <span class="schema-pill">address</span>
+                  <span class="schema-pill">is_active</span>
+                </div>
+              </div>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      const dupMap = getDuplicateRfidMap();
+      const term = currentSearchTerm.toLowerCase().trim();
+
+      records.forEach((record, index) => {
+        const rfid = (record.rfid_uid || "").trim();
+        const isFilled = rfid.length > 0;
+        const isDup = isFilled && (dupMap.get(rfid) || 0) > 1;
+
+        if (currentFilter === "unfilled" && isFilled) return;
+        if (currentFilter === "filled" && !isFilled) return;
+        if (currentFilter === "duplicates" && !isDup) return;
+
+        if (term) {
+          const match = Object.values(record).some(val => String(val).toLowerCase().includes(term));
+          if (!match) return;
+        }
+
+        const tr = document.createElement("tr");
+        tr.dataset.index = index;
+        const isActive = index === activeRowIndex;
+        if (isActive) tr.classList.add("active-row");
+        if (isDup) tr.classList.add("duplicate-rfid-row");
+
+        // Row Index Cell
+        const idxTd = document.createElement("td");
+        idxTd.className = "row-idx";
+        idxTd.textContent = String(index + 1);
+        idxTd.addEventListener("click", () => setActiveRow(index));
+        tr.appendChild(idxTd);
+
+        // Columns
+        EXPECTED_COLUMNS.forEach(col => {
+          const td = document.createElement("td");
+          const val = record[col.key] !== undefined ? String(record[col.key]) : "";
+
+          if (col.key === "rfid_uid") {
+            td.className = "cell-rfid";
+
+            if (isActive) {
+              // DIRECT INLINE SCANNER IN ACTIVE CELL
+              td.classList.add("active-scan-cell");
+              td.innerHTML = buildInlineScannerHTML();
+
+              const input = td.querySelector(".inline-scan-input");
+              input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || (e.key === "Tab" && input.value.trim())) {
+                  e.preventDefault();
+                  handleInlineScan(input.value);
+                } else if (e.key === "Escape") {
+                  resetScanBuffer();
+                  renderTable();
+                  showToast("Pending scans cancelled.", "info");
+                }
+              });
+            } else {
+              // Non-active cell view
+              if (!val) {
+                td.classList.add("empty-rfid");
+                td.innerHTML = `<span>— Click to scan —</span>`;
+              } else {
+                if (isDup) {
+                  td.innerHTML = `<span class="rfid-pill-val dup">${val} <span class="badge-dup">DUPLICATE</span></span>`;
+                } else {
+                  td.innerHTML = `<span class="rfid-pill-val">${val}</span>`;
+                }
+              }
+            }
+
+            td.addEventListener("click", () => {
+              if (index !== activeRowIndex) {
+                setActiveRow(index);
+              }
+            });
+          } else {
+            td.textContent = val;
+            const isColEditable = Boolean(columnEditability[col.key]);
+
+            if (isColEditable) {
+              td.classList.add("cell-editable");
+              td.title = "Double-click to edit text";
+              td.addEventListener("dblclick", () => {
+                startInlineCellEdit(td, index, col.key);
+              });
+            } else {
+              td.addEventListener("click", () => {
+                setActiveRow(index);
+              });
+            }
+          }
+
+          tr.appendChild(td);
+        });
+
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function buildInlineScannerHTML() {
+      const count = pendingScans.length;
+      let width = "0%";
+      let pillClass = "inline-step-pill";
+      let pillText = "Scan 0/3";
+      let placeholder = "Scan card (1 of 3)...";
+
+      if (manualDirectMode) {
+        pillText = "1-Scan Direct";
+        placeholder = "Type or scan once...";
+      } else if (count === 1) {
+        width = "33.33%";
+        pillClass += " step-1";
+        pillText = "Scan 1/3 (Repeat)";
+        placeholder = "Scan SAME card again (2/3)...";
+      } else if (count === 2) {
+        width = "66.66%";
+        pillClass += " step-2";
+        pillText = "Scan 2/3 (1 more)";
+        placeholder = "Scan SAME card once more (3/3)...";
+      }
+
+      return `
+        <div class="inline-scanner-box" id="activeScannerBox">
+          <div class="inline-progress-fill" id="inlineProgressFill" style="width: ${width};"></div>
+          <input
+            type="text"
+            class="inline-scan-input"
+            id="activeInlineInput"
+            placeholder="${placeholder}"
+            autocomplete="off"
+            spellcheck="false"
+            inputmode="text"
+          />
+          <span class="${pillClass}" id="inlineStepPill">${pillText}</span>
+        </div>
+      `;
+    }
+
+    function startInlineCellEdit(cellTd, recordIndex, key) {
+      const currentVal = records[recordIndex][key] || "";
+      cellTd.innerHTML = "";
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "cell-inline-input";
+      input.value = currentVal;
+
+      function commit() {
+        const newVal = input.value;
+        records[recordIndex][key] = newVal;
+        cellTd.textContent = newVal;
+        hasUnsavedChanges = true;
+        showToast(`Updated ${key} for row #${recordIndex + 1}`, "info");
+        updateStats();
+        focusActiveInlineInput();
+      }
+
+      input.addEventListener("blur", commit);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          input.blur();
+        } else if (e.key === "Escape") {
+          input.value = currentVal;
+          input.blur();
+        }
+      });
+
+      cellTd.appendChild(input);
+      input.focus();
+      input.select();
+    }
+
+    /* ==========================================================================
+       ACTIVE ROW SELECTION & FOCUS
+       ========================================================================== */
+    function setActiveRow(index) {
+      if (index < 0 || index >= records.length) return;
+
+      if (index !== activeRowIndex) {
+        resetScanBuffer();
+      }
+
+      activeRowIndex = index;
+      renderTable();
+      updateStatusStrip();
+      updateStats();
+
+      const activeTr = tableBody.querySelector(`tr[data-index="${index}"]`);
+      if (activeTr) {
+        activeTr.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+
+      focusActiveInlineInput();
+    }
+
+    function focusActiveInlineInput() {
+      const input = document.getElementById("activeInlineInput");
+      if (input && document.activeElement !== input && !document.activeElement.classList.contains("cell-inline-input") && document.activeElement !== gridSearchInput) {
+        input.focus();
+      }
+    }
+
+    function updateStatusStrip(customStatus = "", isMismatch = false) {
+      if (records.length === 0 || activeRowIndex < 0 || activeRowIndex >= records.length) {
+        activeRecordName.textContent = records.length === 0 ? "No CSV File Imported" : "No Row Selected";
+        activeRecordMeta.textContent = "";
+        activeStatusMsg.textContent = records.length === 0
+          ? "Please import or append a CSV file to begin scanning."
+          : "Click a row to begin scanning.";
+        scanStatusStrip.className = "scan-status-strip";
+        statActiveRowIndex.textContent = "Row: -";
+        return;
+      }
+
+      const s = records[activeRowIndex];
+      const adm = s.admission_no || "N/A";
+      const cls = s.grade && s.class_name ? `Class ${s.grade}-${s.class_name}` : "";
+      const curRfid = (s.rfid_uid || "").trim();
+
+      activeRecordName.textContent = s.full_name || `Record #${activeRowIndex + 1}`;
+      activeRecordMeta.textContent = `(ID: ${adm}${cls ? " • " + cls : ""})${curRfid ? ` • Current RFID: ${curRfid}` : ""}`;
+      statActiveRowIndex.textContent = `Row #${activeRowIndex + 1} of ${records.length}`;
+
+      if (isMismatch) {
+        scanStatusStrip.className = "scan-status-strip status-mismatch";
+        activeStatusMsg.textContent = customStatus || "Scan mismatch! Please scan the same card 3 times.";
+      } else {
+        scanStatusStrip.className = "scan-status-strip";
+        activeStatusMsg.textContent = customStatus || "Scan card 3 times consecutively directly in the cell.";
+      }
+    }
+
+    /* ==========================================================================
+       INLINE 3-SCAN CONSECUTIVE VERIFICATION ENGINE
+       ========================================================================== */
+    function resetScanBuffer() {
+      clearTimeout(scanResetTimer);
+      pendingScans = [];
+    }
+
+    function handleInlineScan(rawId) {
+      const id = String(rawId).trim();
+      if (!id) return;
+
+      if (activeRowIndex < 0 || activeRowIndex >= records.length) {
+        showToast("Please select a row first.", "warning");
+        return;
+      }
+
+      if (manualDirectMode) {
+        commitRfidToActiveRow(id);
+        return;
+      }
+
+      clearTimeout(scanResetTimer);
+
+      const progress = document.getElementById("inlineProgressFill");
+      const pill = document.getElementById("inlineStepPill");
+      const input = document.getElementById("activeInlineInput");
+
+      if (pendingScans.length === 0) {
+        // Step 1
+        pendingScans.push(id);
+        playStepBeep(1);
+
+        if (progress) progress.style.width = "33.33%";
+        if (pill) {
+          pill.className = "inline-step-pill step-1";
+          pill.textContent = "Scan 1/3 (Repeat)";
+        }
+        if (input) {
+          input.value = "";
+          input.placeholder = "Scan SAME card again (2/3)...";
+        }
+        updateStatusStrip(`Scan 1/3 captured: "${id}". Scan the SAME card again (2/3).`);
+
+        scanResetTimer = setTimeout(() => {
+          if (pendingScans.length > 0) {
+            resetScanBuffer();
+            renderTable();
+            updateStatusStrip("Verification timed out due to 15s inactivity.");
+            showToast("Scan verification timed out.", "info");
+          }
+        }, 15000);
+
+      } else if (pendingScans.length === 1) {
+        // Step 2
+        const firstId = pendingScans[0];
+        if (id === firstId) {
+          pendingScans.push(id);
+          playStepBeep(2);
+
+          if (progress) progress.style.width = "66.66%";
+          if (pill) {
+            pill.className = "inline-step-pill step-2";
+            pill.textContent = "Scan 2/3 (1 more)";
+          }
+          if (input) {
+            input.value = "";
+            input.placeholder = "Scan SAME card once more (3/3)...";
+          }
+          updateStatusStrip(`Scan 2/3 verified: "${id}". Scan 1 more time to confirm.`);
+
+          scanResetTimer = setTimeout(() => {
+            if (pendingScans.length > 0) {
+              resetScanBuffer();
+              renderTable();
+              updateStatusStrip("Verification timed out due to 15s inactivity.");
+              showToast("Scan verification timed out.", "info");
+            }
+          }, 15000);
+        } else {
+          handleScanMismatch(firstId, id, 2);
+        }
+
+      } else if (pendingScans.length === 2) {
+        // Step 3
+        const firstId = pendingScans[0];
+        if (id === firstId) {
+          pendingScans = [];
+          playVerifySuccessBeep();
+
+          if (progress) {
+            progress.style.width = "100%";
+            progress.classList.add("success");
+          }
+          if (pill) {
+            pill.className = "inline-step-pill step-3";
+            pill.textContent = "✓ Verified 3/3";
+          }
+
+          commitRfidToActiveRow(id);
+        } else {
+          handleScanMismatch(firstId, id, 3);
+        }
+      }
+    }
+
+    function handleScanMismatch(firstId, currentId, stepNumber) {
+      clearTimeout(scanResetTimer);
+      pendingScans = [];
+      playMismatchBeep();
+
+      const box = document.getElementById("activeScannerBox");
+      const progress = document.getElementById("inlineProgressFill");
+      const pill = document.getElementById("inlineStepPill");
+
+      if (box) {
+        box.classList.remove("mismatch-shake");
+        void box.offsetWidth;
+        box.classList.add("mismatch-shake");
+      }
+      if (progress) {
+        progress.style.width = "100%";
+        progress.classList.add("mismatch");
+      }
+      if (pill) {
+        pill.className = "inline-step-pill step-mismatch";
+        pill.textContent = "Mismatch!";
+      }
+
+      showToast({
+        title: "Scan Mismatch!",
+        message: `Scan #${stepNumber} ("${currentId}") did not match scan #1 ("${firstId}"). Stays on current row. Scan 3 times again.`,
+        type: "error",
+        duration: 4500
+      });
+
+      updateStatusStrip(`Mismatch on scan #${stepNumber}: "${firstId}" ≠ "${currentId}". Scan again.`, true);
+
+      setTimeout(() => {
+        resetScanBuffer();
+        renderTable();
+        updateStatusStrip();
+        focusActiveInlineInput();
+      }, 1100);
+    }
+
+    function commitRfidToActiveRow(verifiedId) {
+      if (activeRowIndex < 0 || activeRowIndex >= records.length) return;
+
+      const record = records[activeRowIndex];
+      record.rfid_uid = String(verifiedId); // STRICT STRING
+      hasUnsavedChanges = true;
+
+      const dupMap = getDuplicateRfidMap();
+      const count = dupMap.get(verifiedId) || 1;
+      const displayName = record.full_name || `Row #${activeRowIndex + 1}`;
+
+      if (count > 1) {
+        playDuplicateBeep();
+        showToast({
+          title: "Duplicate RFID Warning!",
+          message: `RFID "${verifiedId}" was assigned to ${displayName}, but is already assigned to another row!`,
+          type: "warning",
+          duration: 5000
+        });
+      } else {
+        showToast({
+          title: "RFID Saved",
+          message: `Row #${activeRowIndex + 1} (${displayName}) filled with RFID ${verifiedId}.`,
+          type: "success"
+        });
+      }
+
+      updateStats();
+
+      // Automatically jump to next row
+      const nextIndex = activeRowIndex + 1;
+      if (nextIndex < records.length) {
+        setTimeout(() => {
+          setActiveRow(nextIndex);
+        }, 280);
+      } else {
+        renderTable();
+        updateStatusStrip("Reached end of list! All rows completed.");
+        showToast({
+          title: "All Rows Completed!",
+          message: "Reached the end of the list. You can export the updated CSV now.",
+          type: "info"
+        });
+      }
+    }
+
+    /* ==========================================================================
+       STATS & UI UPDATES
+       ========================================================================== */
+    function updateStats() {
+      const total = records.length;
+      let filled = 0;
+      records.forEach(s => {
+        if ((s.rfid_uid || "").trim()) filled++;
+      });
+      const remaining = total - filled;
+      const pct = total > 0 ? ((filled / total) * 100).toFixed(0) : 0;
+
+      const dupMap = getDuplicateRfidMap();
+      let dupCount = 0;
+      dupMap.forEach(count => {
+        if (count > 1) dupCount++;
+      });
+
+      statTotal.textContent = String(total);
+      statFilled.textContent = String(filled);
+      statFilledPct.textContent = `${pct}% done`;
+      statRemaining.textContent = String(remaining);
+      statDuplicates.textContent = String(dupCount);
+      statProgressPct.textContent = `${pct}%`;
+
+      filterAllBtn.textContent = `All Rows (${total})`;
+      filterUnfilledBtn.textContent = `Pending RFID (${remaining})`;
+      filterFilledBtn.textContent = `Filled (${filled})`;
+      filterDuplicatesBtn.textContent = `Duplicates (${dupCount})`;
+    }
+
+    /* ==========================================================================
+       NAVIGATION & SHORTCUTS
+       ========================================================================== */
+    function jumpToNextUnfilled() {
+      if (!records.length) {
+        showToast("No CSV imported yet.", "warning");
+        return;
+      }
+      const startIndex = (activeRowIndex + 1) % records.length;
+
+      for (let i = 0; i < records.length; i++) {
+        const checkIdx = (startIndex + i) % records.length;
+        if (!records[checkIdx].rfid_uid || !records[checkIdx].rfid_uid.trim()) {
+          setActiveRow(checkIdx);
+          showToast(`Jumped to row #${checkIdx + 1} (${records[checkIdx].full_name || 'Row ' + (checkIdx + 1)})`, "info");
+          return;
+        }
+      }
+
+      showToast("All rows have an RFID assigned!", "success");
+    }
+
+    function clearActiveRfid() {
+      if (!records.length || activeRowIndex < 0 || activeRowIndex >= records.length) {
+        showToast("No active row selected.", "warning");
+        return;
+      }
+      const prev = records[activeRowIndex].rfid_uid;
+      records[activeRowIndex].rfid_uid = "";
+      hasUnsavedChanges = true;
+      resetScanBuffer();
+      renderTable();
+      updateStats();
+      updateStatusStrip();
+      showToast(`Cleared RFID for row #${activeRowIndex + 1}`, "info");
+      focusActiveInlineInput();
+    }
+
+    /* ==========================================================================
+       UNSAVED CHANGES SAFEGUARD
+       ========================================================================== */
+    window.addEventListener("beforeunload", (e) => {
+      if (hasUnsavedChanges && records.length > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
+
+    /* ==========================================================================
+       EVENT LISTENERS & SHORTCUTS
+       ========================================================================== */
+    window.addEventListener("keydown", (e) => {
+      // Hotkey: Cmd/Ctrl + S to Export
+      if ((e.metaKey || e.ctrlKey) && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        exportToCSV();
+        return;
+      }
+
+      // Hotkey: Cmd/Ctrl + O to Fresh Import
+      if ((e.metaKey || e.ctrlKey) && (e.key === "o" || e.key === "O")) {
+        e.preventDefault();
+        freshFileInput.click();
+        return;
+      }
+
+      if (document.activeElement.classList.contains("cell-inline-input") || document.activeElement === gridSearchInput) {
+        return;
+      }
+
+      // Arrow navigation
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (activeRowIndex < records.length - 1) {
+          setActiveRow(activeRowIndex + 1);
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (activeRowIndex > 0) {
+          setActiveRow(activeRowIndex - 1);
+        }
+      }
+    });
+
+    jumpNextUnfilledBtn.addEventListener("click", jumpToNextUnfilled);
+    clearCurrentRfidBtn.addEventListener("click", clearActiveRfid);
+
+    // Direct 1-scan toggle
+    manualEditToggleBtn.addEventListener("click", () => {
+      manualDirectMode = !manualDirectMode;
+      if (manualDirectMode) {
+        manualEditToggleBtn.classList.add("active");
+        manualEditToggleBtn.innerHTML = "⚡ Direct 1-Scan ON";
+        showToast("Direct 1-Scan active: single scan directly saves RFID.", "info");
+      } else {
+        manualEditToggleBtn.classList.remove("active");
+        manualEditToggleBtn.innerHTML = "✏️ Direct 1-Scan";
+        showToast("3-Scan Verification restored.", "info");
+      }
+      resetScanBuffer();
+      renderTable();
+      focusActiveInlineInput();
+    });
+
+    // Fresh Import Button
+    freshImportBtn.addEventListener("click", () => {
+      if (hasUnsavedChanges && records.length > 0) {
+        if (!confirm("You have unexported scan changes. Performing a fresh import will replace current records. Continue?")) {
+          return;
+        }
+      }
+      freshFileInput.click();
+    });
+
+    freshFileInput.addEventListener("change", async (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        await handleFilesImport(e.target.files, "fresh");
+      }
+      freshFileInput.value = "";
+    });
+
+    // Append Import Button
+    appendImportBtn.addEventListener("click", () => {
+      appendFileInput.click();
+    });
+
+    appendFileInput.addEventListener("change", async (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        await handleFilesImport(e.target.files, "append");
+      }
+      appendFileInput.value = "";
+    });
+
+    // Drag and Drop support (handles both window and dropzone)
+    window.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      const dropzone = document.getElementById("emptyDropzone");
+      if (dropzone) dropzone.classList.add("drag-active");
+    });
+
+    window.addEventListener("dragleave", (e) => {
+      const dropzone = document.getElementById("emptyDropzone");
+      if (dropzone && !dropzone.contains(e.relatedTarget)) {
+        dropzone.classList.remove("drag-active");
+      }
+    });
+
+    window.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      const dropzone = document.getElementById("emptyDropzone");
+      if (dropzone) dropzone.classList.remove("drag-active");
+
+      if (!e.dataTransfer || !e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
+
+      const validFiles = Array.from(e.dataTransfer.files).filter(f =>
+        f.name.toLowerCase().endsWith(".csv") || f.name.toLowerCase().endsWith(".txt")
+      );
+
+      if (validFiles.length === 0) {
+        showToast("Please drop valid .csv file(s).", "warning");
+        return;
+      }
+
+      if (records.length === 0) {
+        // Direct fresh import if table is empty
+        await handleFilesImport(validFiles, "fresh");
+      } else {
+        // Show choice modal for append vs fresh
+        pendingDroppedFiles = validFiles;
+        dropModalCurrentCount.textContent = `${records.length}`;
+        dropModalSubtitle.textContent = `${validFiles.length} file(s) dropped: ${validFiles.map(f => f.name).join(", ")}`;
+        dropActionModal.style.display = "flex";
+      }
+    });
+
+    // Drop Modal Buttons
+    dropModalAppendBtn.addEventListener("click", async () => {
+      dropActionModal.style.display = "none";
+      if (pendingDroppedFiles) {
+        await handleFilesImport(pendingDroppedFiles, "append");
+        pendingDroppedFiles = null;
+      }
+    });
+
+    dropModalFreshBtn.addEventListener("click", async () => {
+      dropActionModal.style.display = "none";
+      if (pendingDroppedFiles) {
+        await handleFilesImport(pendingDroppedFiles, "fresh");
+        pendingDroppedFiles = null;
+      }
+    });
+
+    dropModalCancelBtn.addEventListener("click", () => {
+      dropActionModal.style.display = "none";
+      pendingDroppedFiles = null;
+      focusActiveInlineInput();
+    });
+
+    // Export CSV
+    exportBtn.addEventListener("click", exportToCSV);
+
+    // Mute toggle
+    muteBtn.addEventListener("click", () => {
+      isMuted = !isMuted;
+      localStorage.setItem("rfid_sound_muted", isMuted ? "true" : "false");
+      if (isMuted) {
+        muteIcon.textContent = "🔇";
+        muteBtn.innerHTML = `<span>🔇</span> Sound Off`;
+        muteBtn.classList.add("active");
+        showToast("Audio feedback muted.", "info");
+      } else {
+        muteIcon.textContent = "🔊";
+        muteBtn.innerHTML = `<span>🔊</span> Sound On`;
+        muteBtn.classList.remove("active");
+        showToast("Audio feedback enabled.", "info");
+      }
+      focusActiveInlineInput();
+    });
+
+    // Clear All Table
+    clearAllBtn.addEventListener("click", () => {
+      if (records.length === 0) {
+        showToast("Table is already empty.", "info");
+        return;
+      }
+      if (confirm(`Are you sure you want to clear all ${records.length} records? Any unsaved scan changes will be lost.`)) {
+        records = [];
+        activeRowIndex = -1;
+        originalFileName = "";
+        hasUnsavedChanges = false;
+        resetScanBuffer();
+        renderHeader();
+        renderTable();
+        updateStats();
+        updateStatusStrip();
+        showToast("Table cleared. Ready for new import.", "info");
+      }
+    });
+
+    // Close Modal
+    closeModalBtn.addEventListener("click", () => {
+      errorModal.style.display = "none";
+      focusActiveInlineInput();
+    });
+
+    // Filters
+    [filterAllBtn, filterUnfilledBtn, filterFilledBtn, filterDuplicatesBtn].forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".filter-pill").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentFilter = btn.dataset.filter;
+        renderTable();
+        focusActiveInlineInput();
+      });
+    });
+
+    // Search
+    gridSearchInput.addEventListener("input", (e) => {
+      currentSearchTerm = e.target.value;
+      renderTable();
+    });
+
+    // Keep active inline cell focused for handheld scanners
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("button, input, a, .toast, .modal-card, td, .empty-dropzone")) return;
+      focusActiveInlineInput();
+    });
+
+    /* ==========================================================================
+       INITIALIZATION
+       ========================================================================== */
+    renderHeader();
+    renderTable();
+    updateStats();
+    updateStatusStrip();
+  </script>
+</body>
+</html>
